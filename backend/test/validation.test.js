@@ -524,6 +524,41 @@ test('workflow and post-script validators reject malformed template references',
   }
 });
 
+test('validateWorkflow rejects duplicate keys in an array-form output format', () => {
+  const outputFormat = [
+    ...Object.entries(terminalOutput).map(([key, type]) => ({ key, type })),
+    { key: 'summary', type: 'string' },
+  ];
+
+  assert.throws(
+    () => validateWorkflow(workflowWithTerminal(outputFormat)),
+    (error) =>
+      error instanceof ValidationError &&
+      error.errors.some(
+        (item) =>
+          item.field === 'levels[0].outputFormat' &&
+          item.message.includes('"summary"') &&
+          item.message.includes('more than once')
+      )
+  );
+});
+
+test('validatePostScript rejects duplicate keys in an array-form output format', () => {
+  const outputFormat = [
+    { key: '_chip_risk', type: 'string' },
+    { key: '_chip_risk', type: 'number' },
+  ];
+
+  assert.throws(
+    () => validatePostScript({ name: 'duplicate-output', content: 'Analyze {{summary}}.', outputFormat }),
+    (error) =>
+      error instanceof ValidationError &&
+      error.errors.some(
+        (item) => item.field === 'outputFormat' && item.message === '"_chip_risk" is a duplicate output key.'
+      )
+  );
+});
+
 test('workflow and post-script validators accept spaced and dynamic template references', () => {
   const workflow = workflowWithTerminal({ ...terminalOutput });
   workflow.levels[0].steps[0].content = 'Analyze {{ repo_full }} for {{ extra.impact_1 }}.';
