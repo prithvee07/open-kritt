@@ -291,3 +291,28 @@ export function normalizeOutputFormat(input) {
   }
   return out;
 }
+
+// Array-form output formats may repeat the same key. normalizeOutputFormat collapses
+// those to their last occurrence, which would otherwise hide the conflict from
+// validation entirely. Callers check the raw input with this before normalizing so
+// duplicate keys are rejected instead of silently disappearing.
+export function duplicateOutputFormatKeys(input) {
+  let value = input;
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const f of value) {
+    if (!f || typeof f !== 'object' || !('key' in f)) continue;
+    const key = String(f.key);
+    if (seen.has(key)) duplicates.add(key);
+    seen.add(key);
+  }
+  return [...duplicates];
+}

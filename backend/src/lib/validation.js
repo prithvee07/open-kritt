@@ -32,6 +32,7 @@ import {
   hasMalformedTemplateRefs,
   parseRefs,
   normalizeOutputFormat,
+  duplicateOutputFormatKeys,
   refResolves,
   extractExtraKeys,
   multiOutputDepthKey,
@@ -270,6 +271,9 @@ export function validateWorkflow(body) {
   // Normalize each level's output format up front (so we can detect bad JSON).
   const normLevels = levels.map((lvl, i) => {
     let outputFormat = {};
+    for (const k of duplicateOutputFormatKeys(lvl?.outputFormat ?? {})) {
+      push(`levels[${i}].outputFormat`, `"${k}" is used more than once in this level's output format.`);
+    }
     try {
       outputFormat = normalizeOutputFormat(lvl?.outputFormat ?? {});
     } catch {
@@ -575,6 +579,9 @@ export function validatePostScript(body) {
   if (!content.trim()) push('content', 'Content is required.');
 
   let outputFormat = {};
+  for (const k of duplicateOutputFormatKeys(body?.outputFormat ?? {})) {
+    push('outputFormat', `"${k}" is a duplicate output key.`);
+  }
   try {
     outputFormat = normalizeOutputFormat(body?.outputFormat ?? {});
   } catch {
@@ -583,13 +590,10 @@ export function validatePostScript(body) {
 
   const keys = Object.keys(outputFormat);
   if (keys.length === 0) push('outputFormat', 'Output format must define at least one key.');
-  const seen = new Set();
   for (const [k, type] of Object.entries(outputFormat)) {
     if (!isValidKey(k)) push('outputFormat', `"${k}" is not a valid key name.`);
     if (RESERVED_POST_SCRIPT_KEYS.includes(k))
       push('outputFormat', `"${k}" is a reserved key and can't be an output key.`);
-    if (seen.has(k)) push('outputFormat', `"${k}" is a duplicate output key.`);
-    seen.add(k);
     if (!FIELD_TYPES.includes(type)) push('outputFormat', `"${k}" has an unsupported type "${type}".`);
     if (POST_SCRIPT_MARKDOWN_OUTPUT_KEYS.includes(k) && type !== 'string') {
       push('outputFormat', `"${k}" must use type "string" so it can be rendered as Markdown.`);
