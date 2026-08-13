@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - run: node --test scripts/kritt.test.mjs scripts/kritt-ui.test.mjs
+      - run: node --test scripts/kritt.test.mjs scripts/kritt-ui.test.mjs scripts/kritt-headless.test.mjs
 
   docs:
     name: docs (links and redirects)
@@ -98,7 +98,7 @@ jobs:
       - run: npm test
 
   engine:
-    name: engine (lint)
+    name: engine (lint • image)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -114,6 +114,8 @@ jobs:
         continue-on-error: true
       - run: ruff format --check .
         continue-on-error: true
+      - name: Build the engine image
+        run: docker build --tag open-kritt-engine-ci .
       # TODO: re-enable the test suite. Several tests currently assume a writable
       # /root home (codex/claude dirs) and one has an outdated assertion, so they
       # fail on CI runners. Lint-only for now.

@@ -9,8 +9,9 @@
 
 **Orchestrate AI agents to find real vulnerabilities in code.**
 
-An open-source, self-hosted security research platform that turns focused AI analysis
-into de-duplicated, ranked findings with configurable validation and enrichment.
+An open-source, self-hosted security and vulnerability research platform that turns
+focused AI analysis into de-duplicated, ranked findings with configurable validation and
+enrichment.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/Kritt-ai/open-kritt?sort=semver)](https://github.com/Kritt-ai/open-kritt/releases)
@@ -46,6 +47,11 @@ over their prompts, workflows, model providers, and infrastructure.
   or Claude Code.
 - **Verify findings** — use post-scripts to validate issues, build proofs of concept, and
   produce reports.
+- **Export scan results** — package canonical findings, structured data, post-processing
+  output, reports, and proofs of concept in one ZIP archive with a share-safe manifest;
+  completed scans produce complete exports, while stopped or failed scans with findings
+  produce clearly marked partial exports. Attacker-influenced report and PoC source is
+  kept as plain text.
 - **Prioritize results** — apply custom severity rankers, a consistent finding schema,
   and automatic de-duplication.
 - **Bring your own model access** — use a Codex login or connect through OpenAI,
@@ -74,6 +80,18 @@ Open [http://localhost:5173](http://localhost:5173) once the stack is running. Y
 need one model-access option; `./kritt setup` guides you through the available logins and
 API keys. A `GITHUB_TOKEN` is optional and only needed for private GitHub repositories.
 
+On a server without a browser or desktop, leave the stack running and open another shell:
+
+```bash
+./kritt-headless
+```
+
+The headless CLI imports portable workflow, post-script, skill, and ranker JSON; creates
+scans with the same backend validation as the web form; displays scan status, stages, and
+failure reasons; edits non-secret runtime settings; and exports finding bundles. It does
+not display finding contents in the terminal. See the
+[headless CLI guide](docs-site/getting-started/headless-cli.mdx).
+
 The default ports bind to `127.0.0.1`, and the backend does not include application
 authentication. Keep the stack private.
 
@@ -99,6 +117,7 @@ npm run dev
 Open [http://localhost:3001](http://localhost:3001) to view the site.
 
 - [Product overview](docs-site/getting-started/welcome.mdx)
+- [Use open·kritt without a graphical interface](docs-site/getting-started/headless-cli.mdx)
 - [Run your first scan](docs-site/first-scan/workflow.mdx)
 - [Workflows and prompt steps](docs-site/workflows/steps.mdx)
 - [Security and threat model](docs/threat-model.md)

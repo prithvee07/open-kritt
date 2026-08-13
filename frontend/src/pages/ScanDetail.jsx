@@ -25,6 +25,7 @@ import WorkflowModelConfiguration, {
 import { modelOverridesDraft, modelOverridesEqual, reconcileModelOverrides } from '../lib/modelOverrides.js';
 import { usePagination } from '../lib/usePagination.js';
 import Pagination from '../components/Pagination.jsx';
+import { saveBrowserDownload } from '../lib/download.js';
 
 export function scanActions(status) {
   const active = ['prewarming_cache', 'running', 'post_processing'].includes(status);
@@ -36,6 +37,26 @@ export function scanActions(status) {
     ),
     canDelete: isScanDeletable(status),
     stopLabel: ['queued', 'pending'].includes(status) ? 'Cancel' : status === 'rate_limited' ? 'Stop retrying' : 'Stop',
+  };
+}
+
+export function scanFindingExportAvailability(scan) {
+  if (!['completed', 'stopped', 'failed'].includes(scan?.status)) {
+    return {
+      ready: false,
+      message: 'Available after the scan completes, stops, or fails.',
+    };
+  }
+  if (!Number(scan?.findings)) return { ready: false, message: 'This scan has no findings to export.' };
+  if (scan.status !== 'completed') {
+    return {
+      ready: true,
+      message: `Download a partial export from this ${scan.status} scan. Some findings or post-processing artifacts may be missing.`,
+    };
+  }
+  return {
+    ready: true,
+    message: 'Download a share-safe index and untrusted finding, report, PoC, and post-processing content.',
   };
 }
 
@@ -60,6 +81,7 @@ export default function ScanDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [extrasOpen, setExtrasOpen] = useState(false);
   const [reviewError, setReviewError] = useState(null);
@@ -135,6 +157,19 @@ export default function ScanDetail() {
     }
   };
 
+  const exportFindings = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setActionError(null);
+    try {
+      saveBrowserDownload(await api.exportScanFindings(id));
+    } catch (exportError) {
+      setActionError(exportError);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Optimistically update review fields. Per-record queues ensure rapid clicks
   // reach the server in order, and pending overlays survive background polls.
   const saveVuln = (vuln, patch) => {
@@ -194,6 +229,7 @@ export default function ScanDetail() {
   const list = vulns || [];
   const extraEntries = scan.extra && typeof scan.extra === 'object' ? Object.entries(scan.extra) : [];
   const actions = scanActions(scan.status);
+  const exportAvailability = scanFindingExportAvailability(scan);
   const agentSkills =
     Array.isArray(scan.agentSkills) && scan.agentSkills.length
       ? scan.agentSkills
@@ -265,6 +301,15 @@ export default function ScanDetail() {
           </div>
           <div className="scan-detail-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <Button
+              variant="subtle"
+              style={{ height: 32 }}
+              onClick={exportFindings}
+              disabled={!exportAvailability.ready || busy || exporting}
+              title={exportAvailability.message}
+            >
+              {exporting ? 'Exporting…' : 'Export findings'}
+            </Button>
+            <Button
               variant="ghost"
               style={{ height: 32 }}
               to={duplicateScanPath(scan.id)}
@@ -273,7 +318,12 @@ export default function ScanDetail() {
               Duplicate scan
             </Button>
             {actions.canDelete && (
-              <Button variant="danger" style={{ height: 32 }} onClick={() => !busy && deleteScan()} disabled={busy}>
+              <Button
+                variant="danger"
+                style={{ height: 32 }}
+                onClick={() => !busy && !exporting && deleteScan()}
+                disabled={busy || exporting}
+              >
                 Delete
               </Button>
             )}

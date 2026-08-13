@@ -12,6 +12,7 @@ import {
   runSettingsDraft,
   runSettingsPayload,
   scanActions,
+  scanFindingExportAvailability,
   ScanStatusPanel,
 } from './ScanDetail.jsx';
 
@@ -206,6 +207,29 @@ describe('scan lifecycle actions', () => {
     expect(scanActions('completed')).toMatchObject({
       canResume: false,
       canDelete: true,
+    });
+  });
+
+  it('exports completed findings and marks stopped or failed scans as partial', () => {
+    expect(scanFindingExportAvailability({ status: 'completed', findings: 2 })).toMatchObject({
+      ready: true,
+      message: expect.stringMatching(/share-safe.*untrusted/),
+    });
+    expect(scanFindingExportAvailability({ status: 'stopped', findings: 2 })).toMatchObject({
+      ready: true,
+      message: expect.stringMatching(/partial export.*stopped/),
+    });
+    expect(scanFindingExportAvailability({ status: 'failed', findings: 2 })).toMatchObject({
+      ready: true,
+      message: expect.stringMatching(/partial export.*failed/),
+    });
+    expect(scanFindingExportAvailability({ status: 'post_processing', findings: 2 })).toMatchObject({
+      ready: false,
+      message: expect.stringContaining('stops'),
+    });
+    expect(scanFindingExportAvailability({ status: 'stopped', findings: 0 })).toMatchObject({
+      ready: false,
+      message: expect.stringContaining('no findings'),
     });
   });
 });
