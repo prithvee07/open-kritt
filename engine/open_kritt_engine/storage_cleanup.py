@@ -54,13 +54,22 @@ def prune_docker_build_cache(*, keep_storage_bytes: int, timeout_seconds: float 
 
 
 def prune_unused_docker_images(*, timeout_seconds: float = 300.0) -> str | None:
-    """Remove images unused by every running and stopped container."""
+    """Remove dangling (untagged) images left behind by rebuilds and pulls.
+
+    Deliberately omits ``--all``: that flag also removes every *tagged* image
+    with no container currently referencing it, and scan runner containers are
+    always started with ``--rm`` and only live for the duration of one job. A
+    configured scan runner image — including a custom toolchain image, which
+    Docker has no way to durably distinguish from any other unused tagged
+    image — would otherwise be deleted the moment no scan happens to be
+    running, leaving later jobs without their toolchain.
+    """
 
     docker = _docker_binary()
     if not docker:
         return None
     return _run_docker_cleanup(
-        [docker, "image", "prune", "--all", "--force"],
+        [docker, "image", "prune", "--force"],
         timeout_seconds=timeout_seconds,
     )
 
